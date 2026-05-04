@@ -12,7 +12,17 @@ type Props = { post: Post; delay?: number }
 
 export default function PostCard({ post, delay = 0 }: Props) {
   const { user, openModal, showToast, setView } = useApp()
-  const supabase = createClient()  
+  const supabase = createClient()
+  const [liked, setLiked]     = useState(post.liked ?? false)
+  const [likes, setLikes]     = useState(post.likes_count)
+  const [saved, setSaved]     = useState(post.saved ?? false)
+  const [saves, setSaves]     = useState(post.saves_count)
+  const [comments, setComments] = useState(post.comments_count)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [commentList, setCommentList] = useState<Comment[]>([])
+  const [cmtBody, setCmtBody] = useState('')
+  const [loadingCmts, setLoadingCmts] = useState(false)
+
   useEffect(() => {
     const channel = supabase
       .channel(`post-${post.id}`)
@@ -28,15 +38,6 @@ export default function PostCard({ post, delay = 0 }: Props) {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [supabase, post.id])
-  const [liked, setLiked]     = useState(post.liked ?? false)
-  const [likes, setLikes]     = useState(post.likes_count)
-  const [saved, setSaved]     = useState(post.saved ?? false)
-  const [saves, setSaves]     = useState(post.saves_count)
-  const [comments, setComments] = useState(post.comments_count)
-  const [panelOpen, setPanelOpen] = useState(false)
-  const [commentList, setCommentList] = useState<Comment[]>([])
-  const [cmtBody, setCmtBody] = useState('')
-  const [loadingCmts, setLoadingCmts] = useState(false)
 
   const profile = post.profiles
   const initials = profile?.username?.slice(0, 2).toUpperCase() ?? '??'
@@ -91,6 +92,22 @@ export default function PostCard({ post, delay = 0 }: Props) {
     })
   }
 
+  const [deleted, setDeleted] = useState(false)
+
+  async function deletePost() {
+    if (!user || user.id !== post.user_id) return
+    if (!confirm('Delete this post?')) return
+    await supabase.from('posts').delete().eq('id', post.id)
+    setDeleted(true)
+  }
+
+  async function deleteComment(commentId: string) {
+    if (!user) return
+    await supabase.from('comments').delete().eq('id', commentId).eq('user_id', user.id)
+    setCommentList(prev => prev.filter(c => c.id !== commentId))
+    setComments(c => c - 1)
+  }
+
   async function postComment() {
     if (!user || !cmtBody.trim()) return
     const { data, error } = await supabase.from('comments').insert({ post_id: post.id, user_id: user.id, body: cmtBody.trim() }).select('*, profiles(*)').single()
@@ -104,6 +121,8 @@ export default function PostCard({ post, delay = 0 }: Props) {
     }
   }
 
+  if (deleted) return null
+
   return (
     <div className="post" style={{ animationDelay: `${delay}s` }}>
       <div className="post-inner">
@@ -114,6 +133,9 @@ export default function PostCard({ post, delay = 0 }: Props) {
             <span className="poster-handle">{handle}</span>
             {profile?.role && <span className="role-tag">{profile.role}</span>}
             <span className="post-time">{timeStr}</span>
+            {user?.id === post.user_id && (
+              <button onClick={deletePost} style={{ marginLeft:'auto', background:'none', border:'none', color:'var(--text3)', cursor:'pointer', fontSize:12 }}>✕ Delete</button>
+            )}
           </div>
           <div className="post-text">{post.body || post.title}</div>
 
@@ -186,6 +208,9 @@ export default function PostCard({ post, delay = 0 }: Props) {
                   <div className="cmt-head">
                     <span className="cmt-author">{cp?.display_name || cp?.username}</span>
                     <span className="cmt-time">{new Date(c.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric' })}</span>
+                    {user?.id === c.user_id && (
+                      <button onClick={() => deleteComment(c.id)} style={{ marginLeft:'auto', background:'none', border:'none', color:'var(--text3)', cursor:'pointer', fontSize:11 }}>✕</button>
+                    )}
                   </div>
                   <div className="cmt-text">{c.body}</div>
                 </div>
