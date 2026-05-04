@@ -48,13 +48,15 @@ export default function EditProfileModal() {
 
     if (picFile) {
       const path = `${user.id}/avatar.${picFile.name.split('.').pop()}`
-      await supabase.storage.from('avatars').upload(path, picFile, { upsert: true })
+      const { error: picErr } = await supabase.storage.from('avatars').upload(path, picFile, { upsert: true })
+      if (picErr) { showToast('⚠ Photo upload failed: ' + picErr.message); setSaving(false); return }
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
       updates.avatar_url = data.publicUrl + '?t=' + Date.now()
     }
     if (bgFile) {
       const path = `${user.id}/bg.${bgFile.name.split('.').pop()}`
-      await supabase.storage.from('backgrounds').upload(path, bgFile, { upsert: true })
+      const { error: bgErr } = await supabase.storage.from('backgrounds').upload(path, bgFile, { upsert: true })
+      if (bgErr) { showToast('⚠ Background upload failed: ' + bgErr.message); setSaving(false); return }
       const { data } = supabase.storage.from('backgrounds').getPublicUrl(path)
       updates.bg_url = data.publicUrl + '?t=' + Date.now()
       updates.bg_gradient = null
@@ -63,7 +65,8 @@ export default function EditProfileModal() {
       updates.bg_url = null
     }
 
-    await supabase.from('profiles').update(updates).eq('id', user.id)
+    const { error: profileErr } = await supabase.from('profiles').update(updates).eq('id', user.id)
+    if (profileErr) { showToast('⚠ Profile save failed: ' + profileErr.message); setSaving(false); return }
     await refreshProfile()
     setSaving(false)
     closeModal('editProfileModal')
@@ -80,7 +83,6 @@ export default function EditProfileModal() {
           <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</button>
         </>
       }>
-      {/* avatar */}
       <div className="form-group">
         <label className="form-label">Profile Picture</label>
         <div style={{ display:'flex', alignItems:'center', gap:14, marginTop:4 }}>
@@ -93,7 +95,6 @@ export default function EditProfileModal() {
         </div>
       </div>
 
-      {/* background */}
       <div className="form-group">
         <label className="form-label">Profile Background</label>
         <div style={{ marginTop:4 }}>
