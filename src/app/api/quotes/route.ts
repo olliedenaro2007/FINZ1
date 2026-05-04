@@ -32,8 +32,8 @@ export async function GET() {
       return { regularMarketPrice: price, regularMarketChangePercent: pct }
     })
 
-    return NextResponse.json({ quoteResponse: { result: results } })
-  } catch {
-    return NextResponse.json({ error: 'fetch failed' }, { status: 502 })
+    return NextResponse.json({ quoteResponse: { result: results }, _raw: data })
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 502 })
   }
 }
