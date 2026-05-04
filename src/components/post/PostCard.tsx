@@ -12,7 +12,22 @@ type Props = { post: Post; delay?: number }
 
 export default function PostCard({ post, delay = 0 }: Props) {
   const { user, openModal, showToast, setView } = useApp()
-  const supabase = createClient()
+  const supabase = createClient()  
+  useEffect(() => {
+    const channel = supabase
+      .channel(`post-${post.id}`)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'posts', filter: `id=eq.${post.id}` },
+        (payload) => {
+          const u = payload.new as Post
+          setLikes(u.likes_count)
+          setSaves(u.saves_count)
+          setComments(u.comments_count)
+        }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [supabase, post.id])
   const [liked, setLiked]     = useState(post.liked ?? false)
   const [likes, setLikes]     = useState(post.likes_count)
   const [saved, setSaved]     = useState(post.saved ?? false)
