@@ -7,11 +7,8 @@ const SYMBOLS = [
   { sym: 'NVDA', yf: 'NVDA'   },
   { sym: 'AAPL', yf: 'AAPL'   },
   { sym: 'TSLA', yf: 'TSLA'   },
-  { sym: '10Y',  yf: '^TNX'   },
   { sym: 'BTC',  yf: 'BTC-USD'},
-  { sym: 'DXY',  yf: 'DX-Y.NYB'},
   { sym: 'GLD',  yf: 'GLD'    },
-  { sym: 'WTI',  yf: 'CL=F'   },
   { sym: 'VIX',  yf: '^VIX'   },
 ]
 
