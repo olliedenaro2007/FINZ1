@@ -20,12 +20,25 @@ export default function NewPostModal() {
   const [mtype, setMtype]     = useState<string>('dcf')
   const [title, setTitle]     = useState('')
   const [body, setBody]       = useState('')
-  const [file, setFile]       = useState<File | null>(null)
+  const [files, setFiles]     = useState<File[]>([])
   const [loading, setLoading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   function resetForm() {
-    setTitle(''); setBody(''); setFile(null); setType('model'); setMtype('dcf')
+    setTitle(''); setBody(''); setFiles([]); setType('model'); setMtype('dcf')
+  }
+
+  function addFiles(incoming: FileList | null) {
+    if (!incoming) return
+    setFiles(prev => {
+      const existing = new Set(prev.map(f => f.name))
+      const newOnes = Array.from(incoming).filter(f => !existing.has(f.name))
+      return [...prev, ...newOnes]
+    })
+  }
+
+  function removeFile(name: string) {
+    setFiles(prev => prev.filter(f => f.name !== name))
   }
 
   async function submit() {
@@ -33,21 +46,21 @@ export default function NewPostModal() {
     if (!title.trim() && !body.trim()) { showToast('⚠ Add a title or description'); return }
     setLoading(true)
 
-    let file_url: string | null = null
-    let file_name: string | null = null
-    let file_size: string | null = null
+    let uploadedFiles: { url: string; name: string; size: string }[] = []
 
-    if (file && (type === 'model' || type === 'script')) {
-      const ext  = file.name.split('.').pop()
-      const path = `${user.id}/${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage.from('post-files').upload(path, file)
-      if (!upErr) {
+    if (files.length > 0 && (type === 'model' || type === 'script')) {
+      const uploads = await Promise.all(files.map(async file => {
+        const ext  = file.name.split('.').pop()
+        const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const { error: upErr } = await supabase.storage.from('post-files').upload(path, file)
+        if (upErr) return null
         const { data: urlData } = supabase.storage.from('post-files').getPublicUrl(path)
-        file_url  = urlData.publicUrl
-        file_name = file.name
-        file_size = `${(file.size / 1024 / 1024).toFixed(1)} MB`
-      }
+        return { url: urlData.publicUrl, name: file.name, size: `${(file.size / 1024 / 1024).toFixed(1)} MB` }
+      }))
+      uploadedFiles = uploads.filter(Boolean) as typeof uploadedFiles
     }
+
+    const first = uploadedFiles[0] ?? null
 
     await supabase.from('posts').insert({
       user_id:    user.id,
@@ -55,7 +68,10 @@ export default function NewPostModal() {
       model_type: type === 'model' ? mtype : null,
       title:      title.trim() || null,
       body:       body.trim()  || null,
-      file_url, file_name, file_size,
+      file_url:   first?.url  ?? null,
+      file_name:  first?.name ?? null,
+      file_size:  first?.size ?? null,
+      files:      uploadedFiles,
     })
 
     setLoading(false)
@@ -66,6 +82,7 @@ export default function NewPostModal() {
   }
 
   const showFile = type === 'model' || type === 'script'
+  const totalSize = files.reduce((acc, f) => acc + f.size, 0)
 
   return (
     <Modal id="newPostModal" title="Create a Post"
@@ -113,20 +130,33 @@ export default function NewPostModal() {
       {/* file upload */}
       {showFile && (
         <div className="form-group">
-          <label className="form-label">Attach File</label>
+          <label className="form-label">Attach Files</label>
           <div className="upload-zone"
             onClick={() => fileRef.current?.click()}
             onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLElement).style.borderColor='var(--border3)' }}
             onDragLeave={e => { (e.currentTarget as HTMLElement).style.borderColor='' }}
-            onDrop={e => { e.preventDefault(); (e.currentTarget as HTMLElement).style.borderColor=''; const f=e.dataTransfer.files[0]; if(f) setFile(f) }}>
-            <input ref={fileRef} type="file" accept=".xlsx,.xlsm,.xls,.py,.pine" style={{ display:'none' }} onChange={e => e.target.files && setFile(e.target.files[0])} />
-            {file
-              ? <><div className="upload-zone-icon">✅</div><div className="upload-zone-text" style={{ color:'var(--text)' }}>{file.name}</div><div className="upload-zone-sub">{(file.size/1024/1024).toFixed(1)} MB · Ready to publish · <span style={{ color:'var(--red)', cursor:'pointer' }} onClick={e => { e.stopPropagation(); setFile(null) }}>Remove</span></div></>
-              : <><div className="upload-zone-icon">📂</div><div className="upload-zone-text">Drag file here or click to browse</div><div className="upload-zone-sub">.xlsx · .xlsm · .xls · .py · .pine · max 50 MB</div></>
+            onDrop={e => { e.preventDefault(); (e.currentTarget as HTMLElement).style.borderColor=''; addFiles(e.dataTransfer.files) }}>
+            <input ref={fileRef} type="file" multiple accept=".xlsx,.xlsm,.xls,.py,.pine" style={{ display:'none' }} onChange={e => addFiles(e.target.files)} />
+            {files.length === 0
+              ? <><div className="upload-zone-icon">📂</div><div className="upload-zone-text">Drag files here or click to browse</div><div className="upload-zone-sub">.xlsx · .xlsm · .xls · .py · .pine · max 50 MB each</div></>
+              : <><div className="upload-zone-icon">📂</div><div className="upload-zone-text">Click or drag to add more files</div><div className="upload-zone-sub">{files.length} file{files.length > 1 ? 's' : ''} · {(totalSize/1024/1024).toFixed(1)} MB total</div></>
             }
           </div>
+          {files.length > 0 && (
+            <div style={{ marginTop: 8, display:'flex', flexDirection:'column', gap: 4 }}>
+              {files.map(f => (
+                <div key={f.name} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 10px', background:'var(--surface2)', borderRadius:4, fontSize:12 }}>
+                  <span>📄</span>
+                  <span style={{ flex:1 }}>{f.name}</span>
+                  <span style={{ color:'var(--text3)' }}>{(f.size/1024/1024).toFixed(1)} MB</span>
+                  <button onClick={e => { e.stopPropagation(); removeFile(f.name) }} style={{ background:'none', border:'none', color:'var(--text3)', cursor:'pointer' }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </Modal>
   )
 }
+
