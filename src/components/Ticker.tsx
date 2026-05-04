@@ -25,7 +25,7 @@ export default function Ticker() {
       const data = await res.json()
       const results = (data.quoteResponse?.result ?? []) as {regularMarketPrice:number, regularMarketChangePercent:number}[]
       setQuotes(results.map(q => {
-        if (q.regularMarketPrice == null) return null
+        if (q == null || q.regularMarketPrice == null) return null
         const up = q.regularMarketChangePercent >= 0
         const price = q.regularMarketPrice >= 1000
           ? q.regularMarketPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })
