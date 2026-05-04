@@ -17,7 +17,7 @@ export async function GET() {
   const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(syms)}&apikey=${apiKey}`
 
   try {
-    const res = await fetch(url, { next: { revalidate: 60 } })
+    const res = await fetch(url, { cache: 'no-store' })
     const data = await res.json()
 
     const results = SYMBOLS.map(s => {
