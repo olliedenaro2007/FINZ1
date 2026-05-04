@@ -22,10 +22,8 @@ export default function Ticker() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   async function fetchQuotes() {
-    const syms = SYMBOLS.map(s => s.yf).join(',')
-    const url = `https://corsproxy.io/?url=https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChangePercent`
     try {
-      const res = await fetch(url)
+      const res = await fetch('/api/quotes')
       if (!res.ok) return
       const data = await res.json()
       const results = (data.quoteResponse?.result ?? []) as {regularMarketPrice:number, regularMarketChangePercent:number}[]
