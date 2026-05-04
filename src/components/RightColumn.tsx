@@ -7,7 +7,7 @@ export default function RightColumn() {
   const [topics, setTopics] = useState<{ tag: string; count: number }[]>([])
 
   useEffect(() => {
-    fetch('/api/trending')
+    fetch('/api/quotes/trending')
       .then(r => r.json())
       .then(d => { if (d.topics?.length > 0) setTopics(d.topics) })
       .catch(() => {})
