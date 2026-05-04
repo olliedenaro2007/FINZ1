@@ -13,15 +13,16 @@ type Props = { post: Post; delay?: number }
 export default function PostCard({ post, delay = 0 }: Props) {
   const { user, openModal, showToast, setView } = useApp()
   const supabase = createClient()
-  const [liked, setLiked]     = useState(post.liked ?? false)
-  const [likes, setLikes]     = useState(post.likes_count)
-  const [saved, setSaved]     = useState(post.saved ?? false)
-  const [saves, setSaves]     = useState(post.saves_count)
+  const [liked, setLiked]       = useState(post.liked ?? false)
+  const [likes, setLikes]       = useState(post.likes_count)
+  const [saved, setSaved]       = useState(post.saved ?? false)
+  const [saves, setSaves]       = useState(post.saves_count)
   const [comments, setComments] = useState(post.comments_count)
-  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelOpen, setPanelOpen]   = useState(false)
   const [commentList, setCommentList] = useState<Comment[]>([])
-  const [cmtBody, setCmtBody] = useState('')
+  const [cmtBody, setCmtBody]   = useState('')
   const [loadingCmts, setLoadingCmts] = useState(false)
+  const [deleted, setDeleted]   = useState(false)
 
   useEffect(() => {
     const channel = supabase
@@ -39,11 +40,14 @@ export default function PostCard({ post, delay = 0 }: Props) {
     return () => { supabase.removeChannel(channel) }
   }, [supabase, post.id])
 
-  const profile = post.profiles
-  const initials = profile?.username?.slice(0, 2).toUpperCase() ?? '??'
+  const profile     = post.profiles
+  const initials    = profile?.username?.slice(0, 2).toUpperCase() ?? '??'
   const displayName = profile?.display_name || profile?.username || 'Unknown'
-  const handle = '@' + (profile?.username ?? 'unknown')
-  const timeStr = new Date(post.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric' })
+  const handle      = '@' + (profile?.username ?? 'unknown')
+  const timeStr     = new Date(post.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric' })
+  const postFiles   = (post as any).files?.length > 0
+    ? (post as any).files
+    : post.file_name ? [{ url: post.file_url, name: post.file_name, size: post.file_size }] : []
 
   function requireAuth(cb: () => void) {
     if (!user) { openModal('signInModal'); return }
@@ -75,6 +79,9 @@ export default function PostCard({ post, delay = 0 }: Props) {
         await supabase.from('bookmarks').insert({ post_id: post.id, user_id: user!.id })
         setSaved(true); setSaves(s => s + 1)
         showToast('🔖 Bookmarked')
+        if (profile?.id && profile.id !== user!.id) {
+          await supabase.from('notifications').insert({ user_id: profile.id, from_user_id: user!.id, type: 'bookmark', post_id: post.id, message: `@${user!.email?.split('@')[0]} bookmarked your post` })
+        }
       }
     })
   }
@@ -90,8 +97,6 @@ export default function PostCard({ post, delay = 0 }: Props) {
       }
     })
   }
-
-  const [deleted, setDeleted] = useState(false)
 
   async function deletePost() {
     if (!user || user.id !== post.user_id) return
@@ -135,6 +140,7 @@ export default function PostCard({ post, delay = 0 }: Props) {
               <button onClick={deletePost} style={{ marginLeft:'auto', background:'none', border:'none', color:'var(--text3)', cursor:'pointer', fontSize:12 }}>✕ Delete</button>
             )}
           </div>
+
           <div className="post-text">{post.body || post.title}</div>
 
           {post.type === 'model' && post.title && (
@@ -153,7 +159,7 @@ export default function PostCard({ post, delay = 0 }: Props) {
                   <div key={k.l} className="kpi"><div className="kpi-label">{k.l}</div><div className="kpi-val w">{k.v}</div></div>
                 ))}
               </div>
-              {((post as any).files?.length > 0 ? (post as any).files : post.file_name ? [{ url: post.file_url, name: post.file_name, size: post.file_size }] : []).map((f: any) => (
+              {postFiles.map((f: any) => (
                 <div key={f.name} className="model-card-foot">
                   {f.url
                     ? <a className="file-pill" href={f.url} download={f.name}>📄 {f.name}</a>
