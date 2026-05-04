@@ -1,23 +1,17 @@
 import { NextResponse } from 'next/server'
+import yahooFinance from 'yahoo-finance2'
 
 const SYMBOLS = ['^GSPC','^NDX','NVDA','AAPL','TSLA','^TNX','BTC-USD','DX-Y.NYB','GLD','CL=F','^VIX']
 
 export async function GET() {
   try {
-    const syms = SYMBOLS.join(',')
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChangePercent`
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://finance.yahoo.com/',
-      },
-      next: { revalidate: 60 },
-    })
-    if (!res.ok) return NextResponse.json({ error: 'fetch failed' }, { status: 502 })
-    const data = await res.json()
-    return NextResponse.json(data)
+    const results = await Promise.all(
+      SYMBOLS.map(sym =>
+        yahooFinance.quote(sym, { fields: ['regularMarketPrice', 'regularMarketChangePercent'] })
+          .catch(() => null)
+      )
+    )
+    return NextResponse.json({ quoteResponse: { result: results } })
   } catch {
     return NextResponse.json({ error: 'fetch failed' }, { status: 502 })
   }
