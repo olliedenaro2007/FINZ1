@@ -58,7 +58,6 @@ export default function PostCard({ post, delay = 0 }: Props) {
       } else {
         await supabase.from('likes').insert({ post_id: post.id, user_id: user!.id })
         setLiked(true); setLikes(l => l + 1)
-        // notify post author
         if (profile?.id && profile.id !== user!.id) {
           await supabase.from('notifications').insert({ user_id: profile.id, from_user_id: user!.id, type: 'like', post_id: post.id, message: `@${user!.email?.split('@')[0]} liked your post` })
         }
@@ -115,7 +114,6 @@ export default function PostCard({ post, delay = 0 }: Props) {
     setCommentList(prev => [data as Comment, ...prev])
     setComments(c => c + 1)
     setCmtBody('')
-    // notify post author
     if (profile?.id && profile.id !== user.id) {
       await supabase.from('notifications').insert({ user_id: profile.id, from_user_id: user.id, type: 'comment', post_id: post.id, message: `@${user.email?.split('@')[0]} commented on your post` })
     }
@@ -139,7 +137,6 @@ export default function PostCard({ post, delay = 0 }: Props) {
           </div>
           <div className="post-text">{post.body || post.title}</div>
 
-          {/* Model card */}
           {post.type === 'model' && post.title && (
             <div className="model-card">
               <div className="model-card-top">
@@ -156,24 +153,22 @@ export default function PostCard({ post, delay = 0 }: Props) {
                   <div key={k.l} className="kpi"><div className="kpi-label">{k.l}</div><div className="kpi-val w">{k.v}</div></div>
                 ))}
               </div>
-              {post.file_name && (
-                <div className="model-card-foot">
-                  {post.file_url
-                    ? <a className="file-pill" href={post.file_url} download={post.file_name}>📄 {post.file_name}</a>
-                    : <span className="file-pill">📄 {post.file_name}</span>
+              {((post as any).files?.length > 0 ? (post as any).files : post.file_name ? [{ url: post.file_url, name: post.file_name, size: post.file_size }] : []).map((f: any) => (
+                <div key={f.name} className="model-card-foot">
+                  {f.url
+                    ? <a className="file-pill" href={f.url} download={f.name}>📄 {f.name}</a>
+                    : <span className="file-pill">📄 {f.name}</span>
                   }
-                  {post.file_size && <span style={{ marginLeft:'auto' }}>{post.file_size}</span>}
+                  {f.size && <span style={{ marginLeft:'auto' }}>{f.size}</span>}
                 </div>
-              )}
+              ))}
             </div>
           )}
 
-          {/* Macro media */}
           {post.media_url && (
             <img src={post.media_url} alt="" style={{ maxWidth:'100%', borderRadius:3, marginBottom:8, border:'1px solid var(--border)' }} />
           )}
 
-          {/* Post actions */}
           <div className="post-actions">
             <button className={`act${liked ? ' liked' : ''}`} onClick={toggleLike}>
               <span className="act-icon">♥</span><span>{likes}</span>
@@ -191,7 +186,6 @@ export default function PostCard({ post, delay = 0 }: Props) {
         </div>
       </div>
 
-      {/* Inline comment panel */}
       <div className={`comment-panel${panelOpen ? ' open' : ''}`}>
         <div className="cp-header">
           <span className="cp-title">Comments · {comments}</span>
