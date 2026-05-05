@@ -15,6 +15,7 @@ import NotificationsView from '@/components/views/NotificationsView'
 import ProfileView from '@/components/views/ProfileView'
 import BookmarksView from '@/components/views/BookmarksView'
 import MessagesView from '@/components/views/MessagesView'
+import UserProfileView from '@/components/views/UserProfileView'
 import type { Post } from '@/lib/types'
 
 function ModelsView() {
@@ -56,6 +57,7 @@ export default function Home() {
     profile:     <ProfileView />,
     bookmarks:   <BookmarksView />,
     messages:    <MessagesView />,
+    userProfile: <UserProfileView />,
   }
 
   return (
