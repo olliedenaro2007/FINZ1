@@ -67,6 +67,7 @@ export default function LeaderboardView() {
         entry.modelCount++
         const stars = ratingsByPost.get(p.id) ?? []
         entry.ratings.push(...stars)
+        if (stars.length > 0) entry.ratedModelCount++
       })
 
       const uRanks: UserRank[] = Array.from(userModelMap.values())
