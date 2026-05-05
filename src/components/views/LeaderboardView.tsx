@@ -22,18 +22,15 @@ export default function LeaderboardView() {
   async function loadAll() {
     setLoading(true)
 
-    // Fetch all model ratings with post and profile info
     const { data: ratings } = await supabase
       .from('model_ratings')
       .select('stars, post_id, posts(id, title, model_type, user_id, profiles(*))')
 
-    // Fetch all model posts
     const { data: modelPosts } = await supabase
       .from('posts')
       .select('*, profiles(*)')
       .eq('type', 'model')
 
-    // Fetch macro + discussion posts by engagement
     const { data: macroPosts } = await supabase
       .from('posts')
       .select('*, profiles(*)')
@@ -42,14 +39,12 @@ export default function LeaderboardView() {
       .limit(20)
 
     if (ratings && modelPosts) {
-      // Group ratings by post_id
       const ratingsByPost = new Map<string, number[]>()
       ratings.forEach((r: any) => {
         if (!ratingsByPost.has(r.post_id)) ratingsByPost.set(r.post_id, [])
         ratingsByPost.get(r.post_id)!.push(r.stars)
       })
 
-      // Build model rankings
       const mRanks: ModelRank[] = modelPosts
         .map(p => {
           const stars = ratingsByPost.get(p.id) ?? []
@@ -61,7 +56,6 @@ export default function LeaderboardView() {
         .slice(0, 10)
       setModelRanks(mRanks)
 
-      // Build user rankings — avg rating across all their models, min 3 models
       const userModelMap = new Map<string, { profile: Profile; ratings: number[]; modelCount: number }>()
       modelPosts.forEach(p => {
         if (!p.profiles) return
