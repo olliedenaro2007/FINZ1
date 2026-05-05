@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Avatar from '@/components/ui/Avatar'
 import FileViewer from '@/components/ui/FileViewer'
+import StarRating from '@/components/ui/StarRating'
 import type { Post, Comment } from '@/lib/types'
 import { useApp } from '@/contexts/AppContext'
 
