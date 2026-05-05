@@ -93,4 +93,4 @@ export type Rating = {
 export type View =
   | 'feed' | 'explore' | 'models' | 'scripts'
   | 'macro' | 'leaderboard' | 'notifs' | 'profile'
-  | 'bookmarks' | 'messages'
+  | 'bookmarks' | 'messages' | 'userProfile'
