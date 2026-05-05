@@ -28,6 +28,12 @@ type AppContextType = {
   // theme
   dark: boolean
   toggleTheme: () => void
+  // profile navigation
+  viewingUserId: string | null
+  setViewingUserId: (id: string | null) => void
+  // pending DM target
+  pendingChatPartnerId: string | null
+  setPendingChatPartnerId: (id: string | null) => void
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -42,6 +48,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [unreadNotifs, setUnreadNotifs] = useState(0)
   const [unreadDMs, setUnreadDMs]   = useState(0)
   const [dark, setDark]             = useState(true)
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null)
+  const [pendingChatPartnerId, setPendingChatPartnerId] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const refreshProfile = useCallback(async () => {
@@ -116,6 +124,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       openModal, closeModal,
       unreadNotifs, unreadDMs, setUnreadNotifs, setUnreadDMs,
       dark, toggleTheme,
+      viewingUserId, setViewingUserId,
+      pendingChatPartnerId, setPendingChatPartnerId,
     }}>
       {children}
     </AppContext.Provider>
