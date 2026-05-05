@@ -13,7 +13,7 @@ function convId(a: string, b: string) {
 type Convo = { partner: Profile; lastMsg: string; unread: number; ts: string }
 
 export default function MessagesView() {
-  const { user, openModal, closeModal, showToast, setUnreadDMs } = useApp()
+  const { user, openModal, closeModal, showToast, setUnreadDMs, pendingChatPartnerId, setPendingChatPartnerId } = useApp()
   const supabase = createClient()
   const [convos, setConvos]       = useState<Convo[]>([])
   const [chatPartner, setChatPartner] = useState<Profile | null>(null)
@@ -90,6 +90,17 @@ export default function MessagesView() {
   }
 
   useEffect(() => { loadConvos() }, [user])
+
+  useEffect(() => {
+    if (!pendingChatPartnerId || !user) return
+    async function autoOpen() {
+      const { data } = await supabase.from('profiles').select('*').eq('id', pendingChatPartnerId!).single()
+      if (data) await openChat(data as Profile)
+      setPendingChatPartnerId(null)
+    }
+    autoOpen()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingChatPartnerId, user])
 
   // realtime new messages
   useEffect(() => {
@@ -196,3 +207,4 @@ export default function MessagesView() {
     </div>
   )
 }
+
