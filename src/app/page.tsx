@@ -16,6 +16,7 @@ import ProfileView from '@/components/views/ProfileView'
 import BookmarksView from '@/components/views/BookmarksView'
 import MessagesView from '@/components/views/MessagesView'
 import UserProfileView from '@/components/views/UserProfileView'
+import LeaderboardView from '@/components/views/LeaderboardView'
 import type { Post } from '@/lib/types'
 
 function ModelsView() {
@@ -31,14 +32,6 @@ function ScriptsView() {
     <div>
       <div className="topbar"><div className="topbar-inner"><div className="topbar-title">Trading Scripts</div></div></div>
       <PostFeed filter={(p: Post) => p.type === 'script'} emptyMsg="No scripts uploaded yet." realtimeKey="scripts" />
-    </div>
-  )
-}
-function LeaderboardView() {
-  return (
-    <div>
-      <div className="topbar"><div className="topbar-inner"><div className="topbar-title">Leaderboards</div></div></div>
-      <div className="section-empty"><div className="section-empty-icon">🏆</div>Rankings coming soon — be the first to publish a model!</div>
     </div>
   )
 }
