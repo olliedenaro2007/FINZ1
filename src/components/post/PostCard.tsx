@@ -11,18 +11,17 @@ const ICONS: Record<string, string> = { dcf:'📊', lbo:'⚡', ma:'🔀', custom
 type Props = { post: Post; delay?: number }
 
 export default function PostCard({ post, delay = 0 }: Props) {
-  const { user, openModal, showToast, setView } = useApp()
+  const { user, openModal, showToast, setView, setViewingUserId } = useApp()
   const supabase = createClient()
-  const [liked, setLiked]       = useState(post.liked ?? false)
-  const [likes, setLikes]       = useState(post.likes_count)
-  const [saved, setSaved]       = useState(post.saved ?? false)
-  const [saves, setSaves]       = useState(post.saves_count)
+  const [liked, setLiked]     = useState(post.liked ?? false)
+  const [likes, setLikes]     = useState(post.likes_count)
+  const [saved, setSaved]     = useState(post.saved ?? false)
+  const [saves, setSaves]     = useState(post.saves_count)
   const [comments, setComments] = useState(post.comments_count)
-  const [panelOpen, setPanelOpen]   = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
   const [commentList, setCommentList] = useState<Comment[]>([])
-  const [cmtBody, setCmtBody]   = useState('')
+  const [cmtBody, setCmtBody] = useState('')
   const [loadingCmts, setLoadingCmts] = useState(false)
-  const [deleted, setDeleted]   = useState(false)
 
   useEffect(() => {
     const channel = supabase
@@ -40,14 +39,18 @@ export default function PostCard({ post, delay = 0 }: Props) {
     return () => { supabase.removeChannel(channel) }
   }, [supabase, post.id])
 
-  const profile     = post.profiles
-  const initials    = profile?.username?.slice(0, 2).toUpperCase() ?? '??'
+  const profile = post.profiles
+  const initials = profile?.username?.slice(0, 2).toUpperCase() ?? '??'
   const displayName = profile?.display_name || profile?.username || 'Unknown'
-  const handle      = '@' + (profile?.username ?? 'unknown')
-  const timeStr     = new Date(post.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric' })
-  const postFiles   = (post as any).files?.length > 0
-    ? (post as any).files
-    : post.file_name ? [{ url: post.file_url, name: post.file_name, size: post.file_size }] : []
+  const handle = '@' + (profile?.username ?? 'unknown')
+  const timeStr = new Date(post.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric' })
+
+  function goToProfile() {
+    if (!profile?.id) return
+    if (user && profile.id === user.id) { setView('profile'); return }
+    setViewingUserId(profile.id)
+    setView('userProfile')
+  }
 
   function requireAuth(cb: () => void) {
     if (!user) { openModal('signInModal'); return }
@@ -62,6 +65,7 @@ export default function PostCard({ post, delay = 0 }: Props) {
       } else {
         await supabase.from('likes').insert({ post_id: post.id, user_id: user!.id })
         setLiked(true); setLikes(l => l + 1)
+        // notify post author
         if (profile?.id && profile.id !== user!.id) {
           await supabase.from('notifications').insert({ user_id: profile.id, from_user_id: user!.id, type: 'like', post_id: post.id, message: `@${user!.email?.split('@')[0]} liked your post` })
         }
@@ -98,6 +102,8 @@ export default function PostCard({ post, delay = 0 }: Props) {
     })
   }
 
+  const [deleted, setDeleted] = useState(false)
+
   async function deletePost() {
     if (!user || user.id !== post.user_id) return
     if (!confirm('Delete this post?')) return
@@ -119,6 +125,7 @@ export default function PostCard({ post, delay = 0 }: Props) {
     setCommentList(prev => [data as Comment, ...prev])
     setComments(c => c + 1)
     setCmtBody('')
+    // notify post author
     if (profile?.id && profile.id !== user.id) {
       await supabase.from('notifications').insert({ user_id: profile.id, from_user_id: user.id, type: 'comment', post_id: post.id, message: `@${user.email?.split('@')[0]} commented on your post` })
     }
@@ -129,20 +136,22 @@ export default function PostCard({ post, delay = 0 }: Props) {
   return (
     <div className="post" style={{ animationDelay: `${delay}s` }}>
       <div className="post-inner">
-        <Avatar size="md" src={profile?.avatar_url} initials={initials} />
+        <div onClick={goToProfile} style={{ cursor:'pointer', flexShrink:0 }}>
+          <Avatar size="md" src={profile?.avatar_url} initials={initials} />
+        </div>
         <div className="post-body">
           <div className="post-header">
-            <span className="poster-name">{displayName}</span>
-            <span className="poster-handle">{handle}</span>
+            <span className="poster-name" onClick={goToProfile} style={{ cursor:'pointer' }}>{displayName}</span>
+            <span className="poster-handle" onClick={goToProfile} style={{ cursor:'pointer' }}>{handle}</span>
             {profile?.role && <span className="role-tag">{profile.role}</span>}
             <span className="post-time">{timeStr}</span>
             {user?.id === post.user_id && (
               <button onClick={deletePost} style={{ marginLeft:'auto', background:'none', border:'none', color:'var(--text3)', cursor:'pointer', fontSize:12 }}>✕ Delete</button>
             )}
           </div>
-
           <div className="post-text">{post.body || post.title}</div>
 
+          {/* Model card */}
           {post.type === 'model' && post.title && (
             <div className="model-card">
               <div className="model-card-top">
@@ -159,7 +168,7 @@ export default function PostCard({ post, delay = 0 }: Props) {
                   <div key={k.l} className="kpi"><div className="kpi-label">{k.l}</div><div className="kpi-val w">{k.v}</div></div>
                 ))}
               </div>
-              {postFiles.map((f: any) => (
+              {((post as any).files?.length > 0 ? (post as any).files : post.file_name ? [{ url: post.file_url, name: post.file_name, size: post.file_size }] : []).map((f: any) => (
                 <div key={f.name} className="model-card-foot">
                   {f.url
                     ? <a className="file-pill" href={f.url} download={f.name}>📄 {f.name}</a>
@@ -171,10 +180,12 @@ export default function PostCard({ post, delay = 0 }: Props) {
             </div>
           )}
 
+          {/* Macro media */}
           {post.media_url && (
             <img src={post.media_url} alt="" style={{ maxWidth:'100%', borderRadius:3, marginBottom:8, border:'1px solid var(--border)' }} />
           )}
 
+          {/* Post actions */}
           <div className="post-actions">
             <button className={`act${liked ? ' liked' : ''}`} onClick={toggleLike}>
               <span className="act-icon">♥</span><span>{likes}</span>
@@ -192,6 +203,7 @@ export default function PostCard({ post, delay = 0 }: Props) {
         </div>
       </div>
 
+      {/* Inline comment panel */}
       <div className={`comment-panel${panelOpen ? ' open' : ''}`}>
         <div className="cp-header">
           <span className="cp-title">Comments · {comments}</span>
