@@ -61,7 +61,7 @@ export default function LeaderboardView() {
         if (!p.profiles) return
         const prof = p.profiles as unknown as Profile
         if (!userModelMap.has(p.user_id)) {
-          userModelMap.set(p.user_id, { profile: prof, ratings: [], modelCount: 0 })
+          userModelMap.set(p.user_id, { profile: prof, ratings: [], modelCount: 0, ratedModelCount: 0 })
         }
         const entry = userModelMap.get(p.user_id)!
         entry.modelCount++
