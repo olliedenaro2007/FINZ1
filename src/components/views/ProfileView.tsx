@@ -111,7 +111,6 @@ export default function ProfileView() {
         </div>
       </div>
 
-      {/* tabs */}
       <div style={{ display:'flex', borderBottom:'1px solid var(--border)' }}>
         {(['posts','liked','saved'] as Tab[]).map(t => (
           <button key={t} className={`t-tab${tab === t ? ' active' : ''}`} style={{ flex:1, textAlign:'center' }} onClick={() => setTab(t)}>
@@ -121,7 +120,6 @@ export default function ProfileView() {
       </div>
       <PostFeed key={tab} filter={postFilter} emptyMsg={`No ${tab} posts yet.`} realtimeKey={`profile-${tab}`} />
 
-      {/* Followers / Following modal */}
       {listModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}
           onClick={() => setListModal(null)}>
