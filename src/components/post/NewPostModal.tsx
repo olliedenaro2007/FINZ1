@@ -81,7 +81,7 @@ export default function NewPostModal() {
     showToast('✓ Post published!')
   }
 
-  const showFile = type === 'model' || type === 'script'
+ const showFile = type === 'model' || type === 'script' || type === 'discussion'
   const totalSize = files.reduce((acc, f) => acc + f.size, 0)
 
   return (
