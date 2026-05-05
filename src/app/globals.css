@@ -191,7 +191,7 @@ button{cursor:pointer;}
 .profile-hero{height:100px;background:var(--bg2);border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
 .profile-hero::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent,transparent 60px,var(--border) 60px,var(--border) 61px),repeating-linear-gradient(0deg,transparent,transparent 20px,var(--border) 20px,var(--border) 21px);opacity:.3;}
 .profile-info{padding:0 16px 14px;border-bottom:1px solid var(--border);}
-.profile-av-wrap{margin-top:-28px;margin-bottom:10px;}
+.profile-av-wrap{margin-top:-28px;margin-bottom:10px;position:relative;z-index:10;}
 .skill-wrap{margin-bottom:8px;}
 .skill-label-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;}
 .skill-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
