@@ -1,84 +1,240 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import Avatar from '@/components/ui/Avatar'
+import FileViewer from '@/components/ui/FileViewer'
+import StarRating from '@/components/ui/StarRating'
+import type { Post, Comment } from '@/lib/types'
 import { useApp } from '@/contexts/AppContext'
 
-type Props = { postId: string }
+const BADGE: Record<string, string> = { dcf:'badge-dcf', lbo:'badge-lbo', ma:'badge-ma', custom:'badge-custom', script:'badge-script', macro:'badge-macro' }
+const ICONS: Record<string, string> = { dcf:'📊', lbo:'⚡', ma:'🔀', custom:'🔧', script:'⌨', macro:'🌐' }
 
-export default function StarRating({ postId }: Props) {
-  const { user, openModal } = useApp()
+type Props = { post: Post; delay?: number }
+
+export default function PostCard({ post, delay = 0 }: Props) {
+  const { user, openModal, showToast, setView, setViewingUserId } = useApp()
   const supabase = createClient()
-  const [avg, setAvg]         = useState<number | null>(null)
-  const [count, setCount]     = useState(0)
-  const [myRating, setMyRating] = useState<number | null>(null)
-  const [hover, setHover]     = useState<number | null>(null)
-  const [saving, setSaving]   = useState(false)
+  const [liked, setLiked]     = useState(post.liked ?? false)
+  const [likes, setLikes]     = useState(post.likes_count)
+  const [saved, setSaved]     = useState(post.saved ?? false)
+  const [saves, setSaves]     = useState(post.saves_count)
+  const [comments, setComments] = useState(post.comments_count)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [commentList, setCommentList] = useState<Comment[]>([])
+  const [cmtBody, setCmtBody] = useState('')
+  const [loadingCmts, setLoadingCmts] = useState(false)
 
   useEffect(() => {
-    async function load() {
-      const { data } = await supabase
-        .from('model_ratings')
-        .select('stars, user_id')
-        .eq('post_id', postId)
+    const channel = supabase
+      .channel(`post-${post.id}`)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'posts', filter: `id=eq.${post.id}` },
+        (payload) => {
+          const u = payload.new as Post
+          setLikes(u.likes_count)
+          setSaves(u.saves_count)
+          setComments(u.comments_count)
+        }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [supabase, post.id])
 
-      if (!data) return
-      setCount(data.length)
-      if (data.length > 0) {
-        setAvg(data.reduce((s, r) => s + r.stars, 0) / data.length)
-      }
-      if (user) {
-    const mine = data.find(r => r.user_id === user.id)
-        if (mine) setMyRating(mine.stars)
-      }
-    }
-    load()
-  }, [postId, user, supabase])
+  const profile = post.profiles
+  const initials = profile?.username?.slice(0, 2).toUpperCase() ?? '??'
+  const displayName = profile?.display_name || profile?.username || 'Unknown'
+  const handle = '@' + (profile?.username ?? 'unknown')
+  const timeStr = new Date(post.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric' })
 
-  async function rate(stars: number) {
-    if (!user) { openModal('signInModal'); return }
-    setSaving(true)
-    if (myRating) {
-      await supabase.from('model_ratings').update({ stars }).eq('post_id', postId).eq('user_id', user.id)
-    } else {
-      await supabase.from('model_ratings').insert({ post_id: postId, user_id: user.id, stars })
-      setCount(c => c + 1)
-    }
-    setMyRating(stars)
-    const { data } = await supabase.from('model_ratings').select('stars').eq('post_id', postId)
-    if (data && data.length > 0) setAvg(data.reduce((s, r) => s + r.stars, 0) / data.length)
-    setSaving(false)
+  function goToProfile() {
+    if (!profile?.id) return
+    if (user && profile.id === user.id) { setView('profile'); return }
+    setViewingUserId(profile.id)
+    setView('userProfile')
   }
 
-  const display = hover ?? myRating ?? 0
+  function requireAuth(cb: () => void) {
+    if (!user) { openModal('signInModal'); return }
+    cb()
+  }
+
+  async function toggleLike() {
+    requireAuth(async () => {
+      if (liked) {
+        await supabase.from('likes').delete().match({ post_id: post.id, user_id: user!.id })
+        setLiked(false); setLikes(l => l - 1)
+      } else {
+        await supabase.from('likes').insert({ post_id: post.id, user_id: user!.id })
+        setLiked(true); setLikes(l => l + 1)
+        if (profile?.id && profile.id !== user!.id) {
+          await supabase.from('notifications').insert({ user_id: profile.id, from_user_id: user!.id, type: 'like', post_id: post.id, message: `@${user!.email?.split('@')[0]} liked your post` })
+        }
+      }
+    })
+  }
+
+  async function toggleSave() {
+    requireAuth(async () => {
+      if (saved) {
+        await supabase.from('bookmarks').delete().match({ post_id: post.id, user_id: user!.id })
+        setSaved(false); setSaves(s => s - 1)
+        showToast('🔖 Removed from bookmarks')
+      } else {
+        await supabase.from('bookmarks').insert({ post_id: post.id, user_id: user!.id })
+        setSaved(true); setSaves(s => s + 1)
+        showToast('🔖 Bookmarked')
+        if (profile?.id && profile.id !== user!.id) {
+          await supabase.from('notifications').insert({ user_id: profile.id, from_user_id: user!.id, type: 'bookmark', post_id: post.id, message: `@${user!.email?.split('@')[0]} bookmarked your post` })
+        }
+      }
+    })
+  }
+
+  async function openComments() {
+    requireAuth(async () => {
+      setPanelOpen(o => !o)
+      if (!panelOpen && !commentList.length) {
+        setLoadingCmts(true)
+        const { data } = await supabase.from('comments').select('*, profiles(*)').eq('post_id', post.id).order('created_at', { ascending: false }).limit(20)
+        setCommentList((data ?? []) as Comment[])
+        setLoadingCmts(false)
+      }
+    })
+  }
+
+  const [deleted, setDeleted] = useState(false)
+  const [viewingFile, setViewingFile] = useState<{ url: string; name: string } | null>(null)
+
+  async function deletePost() {
+    if (!user || user.id !== post.user_id) return
+    if (!confirm('Delete this post?')) return
+    await supabase.from('posts').delete().eq('id', post.id)
+    setDeleted(true)
+  }
+
+  async function deleteComment(commentId: string) {
+    if (!user) return
+    await supabase.from('comments').delete().eq('id', commentId).eq('user_id', user.id)
+    setCommentList(prev => prev.filter(c => c.id !== commentId))
+    setComments(c => c - 1)
+  }
+
+  async function postComment() {
+    if (!user || !cmtBody.trim()) return
+    const { data, error } = await supabase.from('comments').insert({ post_id: post.id, user_id: user.id, body: cmtBody.trim() }).select('*, profiles(*)').single()
+    if (error || !data) return
+    setCommentList(prev => [data as Comment, ...prev])
+    setComments(c => c + 1)
+    setCmtBody('')
+    if (profile?.id && profile.id !== user.id) {
+      await supabase.from('notifications').insert({ user_id: profile.id, from_user_id: user.id, type: 'comment', post_id: post.id, message: `@${user.email?.split('@')[0]} commented on your post` })
+    }
+  }
+
+  if (deleted) return null
 
   return (
-    <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 2 }}>
-          {Array.from({ length: 10 }, (_, i) => i + 1).map(s => (
-            <button
-              key={s}
-              disabled={saving}
-              onClick={() => rate(s)}
-              onMouseEnter={() => setHover(s)}
-              onMouseLeave={() => setHover(null)}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer', padding: '1px 2px',
-                fontSize: 14, lineHeight: 1,
-                color: s <= display ? '#f4c542' : 'var(--border)',
-                transition: 'color 0.1s',
-              }}>
-              ★
-            </button>
-          ))}
+    <div className="post" style={{ animationDelay: `${delay}s` }}>
+      <div className="post-inner">
+        <div onClick={goToProfile} style={{ cursor:'pointer', flexShrink:0 }}>
+          <Avatar size="md" src={profile?.avatar_url} initials={initials} />
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'IBM Plex Mono,monospace' }}>
-          {avg !== null ? (
-            <><span style={{ color: 'var(--text1)', fontWeight: 700 }}>{avg.toFixed(1)}</span>/10 · {count} rating{count !== 1 ? 's' : ''}</>
-          ) : (
-            'No ratings yet'
+        <div className="post-body">
+          <div className="post-header">
+            <span className="poster-name" onClick={goToProfile} style={{ cursor:'pointer' }}>{displayName}</span>
+            <span className="poster-handle" onClick={goToProfile} style={{ cursor:'pointer' }}>{handle}</span>
+            {profile?.role && <span className="role-tag">{profile.role}</span>}
+            <span className="post-time">{timeStr}</span>
+            {user?.id === post.user_id && (
+              <button onClick={deletePost} style={{ marginLeft:'auto', background:'none', border:'none', color:'var(--text3)', cursor:'pointer', fontSize:12 }}>✕ Delete</button>
+            )}
+          </div>
+          <div className="post-text">{post.body || post.title}</div>
+
+          {post.type === 'model' && post.title && (
+            <div className="model-card">
+              <div className="model-card-top">
+                <div className="model-type-icon">{ICONS[post.model_type ?? 'custom'] ?? '📄'}</div>
+                <div className="model-title-area">
+                  <div className="model-title">{post.title}</div>
+                  <span className={`model-badge ${BADGE[post.model_type ?? 'custom'] ?? 'badge-custom'}`}>
+                    {(post.model_type ?? 'custom').toUpperCase()}
+                  </span>
+                </div>
+              </div>
+              <div className="model-kpis">
+                {[{ l:'EV', v:'TBD' }, { l:'IRR', v:'—' }, { l:'MoM', v:'—' }].map(k => (
+                  <div key={k.l} className="kpi"><div className="kpi-label">{k.l}</div><div className="kpi-val w">{k.v}</div></div>
+                ))}
+              </div>
+              {((post as any).files?.length > 0 ? (post as any).files : post.file_name ? [{ url: post.file_url, name: post.file_name, size: post.file_size }] : []).map((f: any) => (
+                <div key={f.name} className="model-card-foot">
+                  {f.url
+                    ? <button className="file-pill" onClick={() => setViewingFile({ url: f.url, name: f.name })} style={{ cursor:'pointer', background:'none', border:'none', padding:0, font:'inherit', color:'inherit' }}>📄 {f.name}</button>
+                    : <span className="file-pill">📄 {f.name}</span>
+                  }
+                  {f.size && <span style={{ marginLeft:'auto' }}>{f.size}</span>}
+                </div>
+              ))}
+              <StarRating postId={post.id} />
+            </div>
           )}
-          {myRating && <span style={{ marginLeft: 6, color: 'var(--accent)' }}>· Your rating: {myRating}</span>}
+
+          {post.media_url && (
+            <img src={post.media_url} alt="" style={{ maxWidth:'100%', borderRadius:3, marginBottom:8, border:'1px solid var(--border)' }} />
+          )}
+
+          <div className="post-actions">
+            <button className={`act${liked ? ' liked' : ''}`} onClick={toggleLike}>
+              <span className="act-icon">♥</span><span>{likes}</span>
+            </button>
+            <button className="act" onClick={openComments}>
+              <span className="act-icon">💬</span><span>{comments}</span>
+            </button>
+            <button className={`act${saved ? ' saved' : ''}`} onClick={toggleSave}>
+              <span className="act-icon">🔖</span><span>{saves}</span>
+            </button>
+            <button className="act" onClick={() => { navigator.clipboard?.writeText(window.location.href); showToast('🔗 Link copied!') }}>
+              <span className="act-icon">↗</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {viewingFile && (
+        <FileViewer url={viewingFile.url} name={viewingFile.name} onClose={() => setViewingFile(null)} />
+      )}
+
+      <div className={`comment-panel${panelOpen ? ' open' : ''}`}>
+        <div className="cp-header">
+          <span className="cp-title">Comments · {comments}</span>
+          <button className="cp-close" onClick={() => setPanelOpen(false)}>✕ Close</button>
+        </div>
+        <div className="comment-list">
+          {loadingCmts && <div style={{ padding:'12px 16px', fontSize:11, color:'var(--text3)' }}>Loading…</div>}
+          {commentList.map(c => {
+            const cp = c.profiles
+            return (
+              <div key={c.id} className="cmt-item">
+                <Avatar size="sm" src={cp?.avatar_url} initials={(cp?.username ?? '?').slice(0, 2).toUpperCase()} />
+                <div className="cmt-body">
+                  <div className="cmt-head">
+                    <span className="cmt-author">{cp?.display_name || cp?.username}</span>
+                    <span className="cmt-time">{new Date(c.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric' })}</span>
+                    {user?.id === c.user_id && (
+                      <button onClick={() => deleteComment(c.id)} style={{ marginLeft:'auto', background:'none', border:'none', color:'var(--text3)', cursor:'pointer', fontSize:11 }}>✕</button>
+                    )}
+                  </div>
+                  <div className="cmt-text">{c.body}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div className="comment-input-row">
+          <input className="comment-input" value={cmtBody} onChange={e => setCmtBody(e.target.value)} placeholder="Write a comment…" onKeyDown={e => e.key === 'Enter' && postComment()} />
+          <button className="comment-send" onClick={postComment}>Post</button>
         </div>
       </div>
     </div>
