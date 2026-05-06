@@ -56,7 +56,7 @@ export default function LeaderboardView() {
         .slice(0, 10)
       setModelRanks(mRanks)
 
-      const userModelMap = new Map<string, { profile: Profile; ratings: number[]; modelCount: number; ratedModelCount: number }
+      const userModelMap = new Map<string, { profile: Profile; ratings: number[]; modelCount: number; ratedModelCount: number }>()
       modelPosts.forEach(p => {
         if (!p.profiles) return
         const prof = p.profiles as unknown as Profile
