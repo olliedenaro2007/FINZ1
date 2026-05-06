@@ -71,7 +71,7 @@ export default function LeaderboardView() {
       })
 
       const uRanks: UserRank[] = Array.from(userModelMap.values())
-        .filter(u => u.modelCount >= 3)
+      .filter(u => u.ratedModelCount >= 3)
         .map(u => ({
           profile: u.profile,
           avgRating: u.ratings.length > 0 ? u.ratings.reduce((a, b) => a + b, 0) / u.ratings.length : 0,
