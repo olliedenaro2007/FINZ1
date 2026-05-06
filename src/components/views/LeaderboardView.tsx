@@ -127,7 +127,7 @@ export default function LeaderboardView() {
       {!loading && tab === 'users' && (
         <div>
           <div style={{ padding:'8px 16px 4px', fontSize:11, color:'var(--text3)', fontFamily:'IBM Plex Mono,monospace' }}>
-            RANKED BY AVG MODEL RATING · MIN 3 MODELS
+            RANKED BY AVG MODEL RATING · MIN 3 RATED MODELS
           </div>
           {userRanks.length === 0
             ? <div className="section-empty">No ranked users yet — post at least 3 models to qualify.</div>
