@@ -91,15 +91,15 @@ export default function ProfileView() {
         </div>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:8 }}>
           <div>
-            <div style={{ fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700 }}>{displayName}</div>
+            <div style={{ fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'var(--text)' }}>{displayName}</div>
             <div style={{ fontSize:11, color:'var(--text3)', fontFamily:'IBM Plex Mono,monospace' }}>@{profile.username}{profile.role ? ' · ' + profile.role : ''}</div>
             <div style={{ display:'flex', gap:16, marginTop:6 }}>
               <button onClick={() => openList('followers')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, textAlign:'left' }}>
-                <span style={{ fontSize:14, fontWeight:700, color:'var(--text1)' }}>{followerCount}</span>
+                <span style={{ fontSize:14, fontWeight:700, color:'var(--text)' }}>{followerCount}</span>
                 <span style={{ fontSize:11, color:'var(--text3)', marginLeft:4 }}>Followers</span>
               </button>
               <button onClick={() => openList('following')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, textAlign:'left' }}>
-                <span style={{ fontSize:14, fontWeight:700, color:'var(--text1)' }}>{followingCount}</span>
+                <span style={{ fontSize:14, fontWeight:700, color:'var(--text)' }}>{followingCount}</span>
                 <span style={{ fontSize:11, color:'var(--text3)', marginLeft:4 }}>Following</span>
               </button>
             </div>
@@ -126,7 +126,7 @@ export default function ProfileView() {
           <div style={{ background:'var(--surface1)', borderRadius:10, width:'min(360px,90vw)', maxHeight:'70vh', display:'flex', flexDirection:'column', overflow:'hidden' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', borderBottom:'1px solid var(--border)' }}>
-              <span style={{ fontWeight:700, fontSize:14 }}>{listModal === 'followers' ? 'Followers' : 'Following'}</span>
+              <span style={{ fontWeight:700, fontSize:14, color:'var(--text)' }}>{listModal === 'followers' ? 'Followers' : 'Following'}</span>
               <button onClick={() => setListModal(null)} style={{ background:'none', border:'none', color:'var(--text3)', cursor:'pointer', fontSize:16 }}>✕</button>
             </div>
             <div style={{ overflowY:'auto', flex:1 }}>
@@ -141,7 +141,7 @@ export default function ProfileView() {
                     style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 16px', cursor:'pointer', borderBottom:'1px solid var(--border)' }}>
                     <Avatar size="sm" src={u.avatar_url} initials={name.slice(0,2).toUpperCase()} />
                     <div>
-                      <div style={{ fontSize:13, fontWeight:600 }}>{name}</div>
+                      <div style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>{name}</div>
                       <div style={{ fontSize:11, color:'var(--text3)' }}>@{u.username}</div>
                     </div>
                   </div>
