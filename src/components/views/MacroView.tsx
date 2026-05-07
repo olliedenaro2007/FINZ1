@@ -8,7 +8,7 @@ import type { MacroBoard, Profile } from '@/lib/types'
 
 type Reply = { id: string; body: string; created_at: string; user_id: string; profiles?: Profile }
 
-const CATS = ['Central Banks & Monetary Policy','Inflation & CPI','FX & Interest Rates','Geopolitics & Trade','Recession / Growth Outlook','Credit Markets','Equity Macro']
+const CATS = ['Central Banks & Monetary Policy','Inflation & CPI','FX & Interest Rates','Geopolitics & Trade','Recession / Growth Outlook','Credit Markets','Equity Macro','Other']
 
 export default function MacroView() {
   const { user, openModal, closeModal, showToast } = useApp()
