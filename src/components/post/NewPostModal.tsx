@@ -88,7 +88,7 @@ export default function NewPostModal() {
     setLoading(false)
     resetForm()
     closeModal('newPostModal')
-    setView('feed')
+    setView(type === 'macro' || type === 'discussion' ? 'macro' : 'feed')
     showToast('✓ Post published!')
   }
 
