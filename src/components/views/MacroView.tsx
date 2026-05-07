@@ -58,6 +58,15 @@ export default function MacroView() {
     showToast('✓ Discussion created')
   }
 
+  async function deleteBoard(id: string, title: string) {
+    if (!user) return
+    if (!confirm('Delete this discussion?')) return
+    await supabase.from('macro_boards').delete().eq('id', id).eq('user_id', user.id)
+    await supabase.from('posts').delete().eq('user_id', user.id).eq('type', 'macro').eq('title', title)
+    setBoards(prev => prev.filter(b => b.id !== id))
+    showToast('🗑 Discussion deleted')
+  }
+
   return (
     <div>
       <div className="topbar">
@@ -76,6 +85,9 @@ export default function MacroView() {
             <div className="disc-meta">
               <span className="cat-badge">{b.category}</span>
               <span style={{ fontSize:9, color:'var(--text4)', fontFamily:'IBM Plex Mono,monospace', marginLeft:'auto' }}>{new Date(b.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric' })}</span>
+              {user?.id === b.user_id && (
+                <button onClick={() => deleteBoard(b.id, b.title)} style={{ marginLeft:8, background:'none', border:'none', color:'var(--text3)', cursor:'pointer', fontSize:11 }}>✕ Delete</button>
+              )}
             </div>
             <div className="disc-title">{b.title}</div>
             {b.body && <div style={{ fontSize:12, color:'var(--text2)', margin:'6px 0', lineHeight:1.55 }}>{b.body}</div>}
