@@ -20,6 +20,10 @@ export default function AuthModals() {
   const [suPw, setSuPw]     = useState('')
   const [suErr, setSuErr]   = useState('')
   const [suLoading, setSuLoading] = useState(false)
+  const [suStep, setSuStep] = useState<'form' | 'verify'>('form')
+  const [otpCode, setOtpCode] = useState('')
+  const [otpErr, setOtpErr] = useState('')
+  const [otpLoading, setOtpLoading] = useState(false)
 
   // forgot pw
   const [fpEmail, setFpEmail] = useState('')
@@ -30,7 +34,6 @@ export default function AuthModals() {
     setSiErr(''); setSiLoading(true)
     const identifier = siId.trim()
     if (!identifier || !siPw) { setSiErr('All fields required'); setSiLoading(false); return }
-    // allow login by username: first look up email
     let email = identifier
     if (!identifier.includes('@')) {
       const { data: p } = await supabase.from('profiles').select('email').ilike('username', identifier).single()
@@ -54,16 +57,25 @@ export default function AuthModals() {
     if (!username || !email || !password) { setSuErr('All fields required'); setSuLoading(false); return }
     if (username.length < 3) { setSuErr('Username must be at least 3 characters'); setSuLoading(false); return }
     if (password.length < 6) { setSuErr('Password must be at least 6 characters'); setSuLoading(false); return }
-    // check username unique
     const { data: existing } = await supabase.from('profiles').select('id').ilike('username', username).maybeSingle()
     if (existing) { setSuErr('Username already taken'); setSuLoading(false); return }
     const { error } = await supabase.auth.signUp({ email, password, options: { data: { username } } })
     setSuLoading(false)
     if (error) { setSuErr(error.message); return }
-    setSuUser(''); setSuEmail(''); setSuPw('')
+    setSuStep('verify')
+  }
+
+  async function submitOtp() {
+    setOtpErr(''); setOtpLoading(true)
+    const token = otpCode.trim()
+    if (token.length !== 6) { setOtpErr('Enter the 6-digit code from your email'); setOtpLoading(false); return }
+    const { error } = await supabase.auth.verifyOtp({ email: suEmail.trim(), token, type: 'signup' })
+    setOtpLoading(false)
+    if (error) { setOtpErr(error.message); return }
+    setSuUser(''); setSuEmail(''); setSuPw(''); setOtpCode(''); setSuStep('form')
     closeModal('signUpModal')
     await refreshProfile()
-    showToast(`✓ Welcome to FINZ, @${username}!`)
+    showToast(`✓ Welcome to FINZ, @${suUser.trim()}!`)
   }
 
   async function submitForgotPw() {
@@ -104,28 +116,62 @@ export default function AuthModals() {
       </Modal>
 
       {/* SIGN UP */}
-      <Modal id="signUpModal" title="Create Account"
+      <Modal id="signUpModal" title={suStep === 'form' ? 'Create Account' : 'Verify Your Email'}
         footer={
           <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:10 }}>
-            <button className="btn btn-primary" style={{ width:'100%', padding:'10px 0' }} onClick={submitSignUp} disabled={suLoading}>
-              {suLoading ? 'Creating…' : 'Create Account'}
-            </button>
-            <div className="auth-switch">Already have an account? <span onClick={() => { closeModal('signUpModal'); openModal('signInModal') }}>Sign In</span></div>
+            {suStep === 'form' ? (
+              <>
+                <button className="btn btn-primary" style={{ width:'100%', padding:'10px 0' }} onClick={submitSignUp} disabled={suLoading}>
+                  {suLoading ? 'Sending code…' : 'Create Account'}
+                </button>
+                <div className="auth-switch">Already have an account? <span onClick={() => { closeModal('signUpModal'); openModal('signInModal') }}>Sign In</span></div>
+              </>
+            ) : (
+              <>
+                <button className="btn btn-primary" style={{ width:'100%', padding:'10px 0' }} onClick={submitOtp} disabled={otpLoading}>
+                  {otpLoading ? 'Verifying…' : 'Verify & Create Account'}
+                </button>
+                <div className="auth-switch"><span onClick={() => setSuStep('form')}>← Back</span></div>
+              </>
+            )}
           </div>
         }>
-        <div className="form-group">
-          <label className="form-label">Username</label>
-          <input className="form-input" value={suUser} onChange={e => setSuUser(e.target.value)} placeholder="e.g. jsmith_models" />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Email</label>
-          <input className="form-input" type="email" value={suEmail} onChange={e => setSuEmail(e.target.value)} placeholder="you@email.com" />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Password</label>
-          <input className="form-input" type="password" value={suPw} onChange={e => setSuPw(e.target.value)} placeholder="Min 6 characters" onKeyDown={e => e.key === 'Enter' && submitSignUp()} />
-        </div>
-        {suErr && <div className="form-error">{suErr}</div>}
+        {suStep === 'form' ? (
+          <>
+            <div className="form-group">
+              <label className="form-label">Username</label>
+              <input className="form-input" value={suUser} onChange={e => setSuUser(e.target.value)} placeholder="e.g. jsmith_models" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input className="form-input" type="email" value={suEmail} onChange={e => setSuEmail(e.target.value)} placeholder="you@email.com" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <input className="form-input" type="password" value={suPw} onChange={e => setSuPw(e.target.value)} placeholder="Min 6 characters" onKeyDown={e => e.key === 'Enter' && submitSignUp()} />
+            </div>
+            {suErr && <div className="form-error">{suErr}</div>}
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize:13, color:'var(--text2)', marginBottom:16, lineHeight:1.6 }}>
+              We sent a 6-digit code to <strong>{suEmail}</strong>. Enter it below to confirm your account.
+            </div>
+            <div className="form-group">
+              <label className="form-label">Verification Code</label>
+              <input
+                className="form-input"
+                value={otpCode}
+                onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                maxLength={6}
+                style={{ fontSize:24, letterSpacing:8, textAlign:'center', fontFamily:'IBM Plex Mono,monospace' }}
+                onKeyDown={e => e.key === 'Enter' && submitOtp()}
+              />
+            </div>
+            {otpErr && <div className="form-error">{otpErr}</div>}
+          </>
+        )}
       </Modal>
 
       {/* FORGOT PASSWORD */}
