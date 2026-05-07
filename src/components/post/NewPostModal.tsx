@@ -11,6 +11,7 @@ const POST_TYPES = [
   { id: 'discussion', icon: '💬', name: 'Discussion',       desc: 'Analysis, Q&A, Debate' },
 ]
 const MODEL_SUBTYPES = ['dcf','lbo','ma','3stmt','comps','custom']
+const MACRO_CATS = ['Central Banks & Monetary Policy','Inflation & CPI','FX & Interest Rates','Geopolitics & Trade','Recession / Growth Outlook','Credit Markets','Equity Macro','Other']
 
 export default function NewPostModal() {
   const { user, closeModal, showToast, setView } = useApp()
@@ -18,6 +19,7 @@ export default function NewPostModal() {
 
   const [type, setType]       = useState<string>('model')
   const [mtype, setMtype]     = useState<string>('dcf')
+  const [macroCat, setMacroCat] = useState<string>(MACRO_CATS[0])
   const [title, setTitle]     = useState('')
   const [body, setBody]       = useState('')
   const [files, setFiles]     = useState<File[]>([])
@@ -25,7 +27,7 @@ export default function NewPostModal() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   function resetForm() {
-    setTitle(''); setBody(''); setFiles([]); setType('model'); setMtype('dcf')
+    setTitle(''); setBody(''); setFiles([]); setType('model'); setMtype('dcf'); setMacroCat(MACRO_CATS[0])
   }
 
   function addFiles(incoming: FileList | null) {
@@ -74,6 +76,15 @@ export default function NewPostModal() {
       files:      uploadedFiles,
     })
 
+    if (type === 'macro' || type === 'discussion') {
+      await supabase.from('macro_boards').insert({
+        user_id:  user.id,
+        title:    title.trim() || null,
+        body:     body.trim()  || null,
+        category: macroCat,
+      })
+    }
+
     setLoading(false)
     resetForm()
     closeModal('newPostModal')
@@ -81,7 +92,7 @@ export default function NewPostModal() {
     showToast('✓ Post published!')
   }
 
- const showFile = type === 'model' || type === 'script' || type === 'discussion'
+  const showFile = type === 'model' || type === 'script' || type === 'discussion'
   const totalSize = files.reduce((acc, f) => acc + f.size, 0)
 
   return (
@@ -92,7 +103,6 @@ export default function NewPostModal() {
           <button className="btn btn-primary" onClick={submit} disabled={loading}>{loading ? 'Publishing…' : 'Publish Post'}</button>
         </>
       }>
-      {/* post type */}
       <div className="form-group">
         <label className="form-label">Choose Category</label>
         <div className="post-type-grid">
@@ -106,7 +116,6 @@ export default function NewPostModal() {
         </div>
       </div>
 
-      {/* model subtype */}
       {type === 'model' && (
         <div className="form-group">
           <label className="form-label">Model Type</label>
@@ -115,6 +124,15 @@ export default function NewPostModal() {
               <button key={s} className={`msub${mtype === s ? ' sel' : ''}`} onClick={() => setMtype(s)}>{s.toUpperCase()}</button>
             ))}
           </div>
+        </div>
+      )}
+
+      {(type === 'macro' || type === 'discussion') && (
+        <div className="form-group">
+          <label className="form-label">Topic Category</label>
+          <select className="form-input" value={macroCat} onChange={e => setMacroCat(e.target.value)}>
+            {MACRO_CATS.map(c => <option key={c}>{c}</option>)}
+          </select>
         </div>
       )}
 
@@ -127,7 +145,6 @@ export default function NewPostModal() {
         <textarea className="form-input" value={body} onChange={e => setBody(e.target.value)} style={{ minHeight:90 }} placeholder="Describe your methodology, assumptions, and key projections…" />
       </div>
 
-      {/* file upload */}
       {showFile && (
         <div className="form-group">
           <label className="form-label">Attach Files</label>
@@ -159,4 +176,3 @@ export default function NewPostModal() {
     </Modal>
   )
 }
-
