@@ -51,6 +51,7 @@ export default function MacroView() {
     }
 
     await supabase.from('macro_boards').insert({ user_id: user.id, title: title.trim(), body: body.trim() || null, category: cat, media_url, file_name })
+    await supabase.from('posts').insert({ user_id: user.id, type: 'macro', title: title.trim(), body: body.trim() || null, media_url })
     setTitle(''); setBody(''); setMediaFile(null)
     setSubmitting(false)
     closeModal('discModal')
@@ -93,7 +94,6 @@ export default function MacroView() {
         ))
       }
 
-      {/* New Discussion Modal */}
       <Modal id="discModal" title="New Macro Discussion"
         footer={
           <>
