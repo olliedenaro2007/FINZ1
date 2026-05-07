@@ -102,7 +102,7 @@ export default function UserProfileView() {
         </div>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:8 }}>
           <div>
-            <div style={{ fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700 }}>{displayName}</div>
+            <div style={{ fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'var(--text1)' }}>{displayName}</div>
             <div style={{ fontSize:11, color:'var(--text3)', fontFamily:'IBM Plex Mono,monospace' }}>
               @{profile.username}{profile.role ? ' · ' + profile.role : ''}
             </div>
