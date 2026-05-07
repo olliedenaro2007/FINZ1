@@ -42,7 +42,7 @@ export default function AuthModals() {
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password: siPw })
     setSiLoading(false)
-    if (error) { setSiErr(error.message); return }
+    if (error) { setSiErr(error.message || 'Sign in failed'); return }
     setSiId(''); setSiPw('')
     closeModal('signInModal')
     await refreshProfile()
@@ -61,7 +61,7 @@ export default function AuthModals() {
     if (existing) { setSuErr('Username already taken'); setSuLoading(false); return }
     const { error } = await supabase.auth.signUp({ email, password, options: { data: { username } } })
     setSuLoading(false)
-    if (error) { setSuErr(error.message); return }
+    if (error) { setSuErr(error.message || 'Sign up failed. Please try again.'); return }
     setSuStep('verify')
   }
 
@@ -71,7 +71,7 @@ export default function AuthModals() {
     if (token.length !== 6) { setOtpErr('Enter the 6-digit code from your email'); setOtpLoading(false); return }
     const { error } = await supabase.auth.verifyOtp({ email: suEmail.trim(), token, type: 'signup' })
     setOtpLoading(false)
-    if (error) { setOtpErr(error.message); return }
+    if (error) { setOtpErr(error.message || 'Invalid code. Please try again.'); return }
     setSuUser(''); setSuEmail(''); setSuPw(''); setOtpCode(''); setSuStep('form')
     closeModal('signUpModal')
     await refreshProfile()
@@ -129,7 +129,7 @@ export default function AuthModals() {
             ) : (
               <>
                 <button className="btn btn-primary" style={{ width:'100%', padding:'10px 0' }} onClick={submitOtp} disabled={otpLoading}>
-                  {otpLoading ? 'Verifying…' : 'Verify & Create Account'}
+                  {otpLoading ? 'Verifying…' : 'Verify Code'}
                 </button>
                 <div className="auth-switch"><span onClick={() => setSuStep('form')}>← Back</span></div>
               </>
@@ -155,7 +155,7 @@ export default function AuthModals() {
         ) : (
           <>
             <div style={{ fontSize:13, color:'var(--text2)', marginBottom:16, lineHeight:1.6 }}>
-              We sent a 6-digit code to <strong>{suEmail}</strong>. Enter it below to confirm your account.
+              We sent a 6-digit code to <strong>{suEmail}</strong>. Check your inbox and enter it below.
             </div>
             <div className="form-group">
               <label className="form-label">Verification Code</label>
@@ -164,9 +164,9 @@ export default function AuthModals() {
                 value={otpCode}
                 onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
-                maxLength={6}
                 style={{ fontSize:24, letterSpacing:8, textAlign:'center', fontFamily:'IBM Plex Mono,monospace' }}
                 onKeyDown={e => e.key === 'Enter' && submitOtp()}
+                autoFocus
               />
             </div>
             {otpErr && <div className="form-error">{otpErr}</div>}
